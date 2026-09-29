@@ -41,7 +41,7 @@ contract MembershipClub is ERC721URIStorage, Ownable, Pausable {
 
         // Refund any overpayment
         if (msg.value > mintPrice) {
-            (bool refunded, ) = payable(msg.sender).call{value: msg.value - mintPrice}("");
+            (bool refunded,) = payable(msg.sender).call{value: msg.value - mintPrice}("");
             require(refunded, "Refund failed");
         }
     }
@@ -53,7 +53,7 @@ contract MembershipClub is ERC721URIStorage, Ownable, Pausable {
 
     /// @notice Owner can withdraw collected mint fees
     function withdraw() external onlyOwner {
-        (bool ok, ) = payable(owner()).call{value: address(this).balance}("");
+        (bool ok,) = payable(owner()).call{value: address(this).balance}("");
         require(ok, "Withdraw failed");
     }
 
