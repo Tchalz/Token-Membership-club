@@ -25,6 +25,7 @@
 <main>
   <h1>Membership Club</h1>
   <p class="sub">Sepolia testnet &middot; <span id="price">…</span> ETH to join</p>
+  <p class="sub">Members: <span id="memberCount">…</span> / <span id="maxSupply">…</span></p>
 
   <button id="connect">Connect wallet</button>
   <button id="join" hidden>Join the club</button>
@@ -40,10 +41,13 @@
 <script>
 const CONTRACT = "0xF5Ac6e16A620db314463F7fB9C707E9c070C2120";
 const SEPOLIA_HEX = "0xaa36a7";
+const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 const ABI = [
   "function isMember(address) view returns (bool)",
   "function mintPrice() view returns (uint256)",
-  "function join() payable"
+  "function join() payable",
+  "function nextTokenId() view returns (uint256)",
+  "function maxSupply() view returns (uint256)"
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -52,6 +56,24 @@ let signer, account, contract;
 function say(msg, isErr) {
   $("status").textContent = msg;
   $("status").className = isErr ? "err" : "";
+}
+
+// Read-only load, works even before a wallet connects
+async function loadStats() {
+  try {
+    const readOnly = new ethers.Contract(CONTRACT, ABI, new ethers.JsonRpcProvider(RPC_URL));
+    const [price, joined, cap] = await Promise.all([
+      readOnly.mintPrice(),
+      readOnly.nextTokenId(),
+      readOnly.maxSupply()
+    ]);
+    $("price").textContent = ethers.formatEther(price);
+    $("memberCount").textContent = joined.toString();
+    $("maxSupply").textContent = cap.toString();
+  } catch (e) {
+    $("memberCount").textContent = "?";
+    $("maxSupply").textContent = "?";
+  }
 }
 
 async function connect() {
@@ -90,6 +112,7 @@ async function join() {
     say("Waiting for confirmation…");
     await tx.wait();
     await refresh();
+    await loadStats();
   } catch (e) {
     say(e.reason || e.shortMessage || e.message, true);
   }
@@ -102,6 +125,8 @@ if (window.ethereum) {
   window.ethereum.on("accountsChanged", () => location.reload());
   window.ethereum.on("chainChanged", () => location.reload());
 }
+
+loadStats();
 </script>
 </body>
 </html>
