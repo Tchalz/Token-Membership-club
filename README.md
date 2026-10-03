@@ -59,18 +59,11 @@ forge fmt --check
 
 ### Deploy
 
-The script reads one optional environment variable, `BASE_TOKEN_URI`, the base link for NFT metadata. It must end with `/`, for example `ipfs://<FOLDER_CID>/`. If it is unset, the contract deploys with an empty base URI and tokens have no real metadata.
-
 ```bash
-export BASE_TOKEN_URI="ipfs://<FOLDER_CID>/"
-
-forge script script/Deploy.s.sol \
-  --rpc-url <SEPOLIA_RPC_URL> \
-  --account <KEYSTORE_NAME> \
-  --broadcast
+forge script script/Deploy.s.sol --rpc-url <SEPOLIA_RPC_URL> --broadcast
 ```
 
-The script does not read a private key from the environment. The deployer is chosen on the command line, preferably with an encrypted keystore (`cast wallet import <KEYSTORE_NAME> --interactive`) rather than `--private-key`. Never commit a `.env` file or a private key.
+TODO: list the environment variables the script reads (for example a private key) and the constructor argument (`baseTokenURI`). Never commit a `.env` file.
 
 ### Frontend
 
