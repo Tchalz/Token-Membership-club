@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { BrowserProvider, Contract, formatEther } from "ethers";
+import { BrowserProvider, Contract, JsonRpcProvider, formatEther } from "ethers";
 import "./App.css";
 
 const CONTRACT = "0xF5Ac6e16A620db314463F7fB9C707E9c070C2120";
 const SEPOLIA_HEX = "0xaa36a7";
+const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com";
 const ABI = [
   "function isMember(address) view returns (bool)",
   "function mintPrice() view returns (uint256)",
   "function join() payable",
   "function nextTokenId() view returns (uint256)",
+  "function maxSupply() view returns (uint256)",
   "function ownerOf(uint256) view returns (address)",
   "function tokenURI(uint256) view returns (string)",
 ];
@@ -49,6 +51,8 @@ export default function App() {
   const [contract, setContract] = useState(null);
   const [account, setAccount] = useState(null);
   const [price, setPrice] = useState("…");
+  const [memberCount, setMemberCount] = useState("…");
+  const [maxSupply, setMaxSupply] = useState("…");
   const [isMember, setIsMember] = useState(false);
   const [nft, setNft] = useState(null);
   const [imgFailed, setImgFailed] = useState(false);
@@ -56,6 +60,28 @@ export default function App() {
   const [joining, setJoining] = useState(false);
 
   const say = (text, err = false) => setStatus({ text, err });
+
+  // Read-only stats, loaded on page load — works even before a wallet connects
+  async function loadStats() {
+    try {
+      const readOnly = new Contract(CONTRACT, ABI, new JsonRpcProvider(RPC_URL));
+      const [p, joined, cap] = await Promise.all([
+        readOnly.mintPrice(),
+        readOnly.nextTokenId(),
+        readOnly.maxSupply(),
+      ]);
+      setPrice(formatEther(p));
+      setMemberCount(joined.toString());
+      setMaxSupply(cap.toString());
+    } catch {
+      setMemberCount("?");
+      setMaxSupply("?");
+    }
+  }
+
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   useEffect(() => {
     if (!window.ethereum) return;
@@ -97,7 +123,6 @@ export default function App() {
       const c = new Contract(CONTRACT, ABI, signer);
       setContract(c);
       setAccount(addr);
-      setPrice(formatEther(await c.mintPrice()));
       await refresh(c, addr);
     } catch (e) {
       say(e.shortMessage || e.message, true);
@@ -112,6 +137,7 @@ export default function App() {
       say("Waiting for confirmation…");
       await tx.wait();
       await refresh(contract, account);
+      await loadStats();
     } catch (e) {
       say(e.reason || e.shortMessage || e.message, true);
     }
@@ -122,6 +148,9 @@ export default function App() {
     <main>
       <h1>Membership Club</h1>
       <p className="sub">Sepolia testnet &middot; {price} ETH to join</p>
+      <p className="sub">
+        Members: {memberCount} / {maxSupply}
+      </p>
 
       {!account && <button onClick={connect}>Connect wallet</button>}
       {account && !isMember && (
