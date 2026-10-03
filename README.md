@@ -9,10 +9,11 @@ A token-gated membership system on Ethereum. Pay 0.01 ETH, receive a membership 
 
 ## How it works
 
-1. A visitor connects MetaMask. The app switches them to Sepolia.
-2. If they aren't a member, they click **Join the club** and pay the mint price.
-3. The contract's `join()` mints them a membership NFT.
-4. The app calls `isMember(address)`, which returns true when the wallet holds the NFT, and reveals the members-only section along with the member's NFT.
+1. A visitor opens the app and immediately sees the mint price and a live **members / supply** count, read directly from the contract, no wallet needed yet.
+2. They connect MetaMask. The app switches them to Sepolia.
+3. If they aren't a member, they click **Join the club** and pay the mint price.
+4. The contract's `join()` mints them a membership NFT.
+5. The app calls `isMember(address)`, which returns true when the wallet holds the NFT, and reveals the members-only section along with the member's NFT. The member counter updates immediately after a successful join.
 
 ## Smart contract
 
@@ -25,6 +26,7 @@ A token-gated membership system on Ethereum. Pay 0.01 ETH, receive a membership 
 | One per wallet | `hasMinted` blocks re-joining, even if the NFT is transferred away |
 | Overpayment | Any ETH above the mint price is refunded |
 | Access check | `isMember(address)` returns true if the wallet holds a membership NFT |
+| Membership count | `nextTokenId()` / `maxSupply()` expose a live "X / 500 joined" count, shown on the live app |
 | Owner controls | `withdraw`, `pause` / `unpause`, `setBaseTokenURI` |
 
 Token metadata URIs are `baseTokenURI + tokenId`, saved at mint time. Changing `baseTokenURI` later affects only future mints.
@@ -59,11 +61,18 @@ forge fmt --check
 
 ### Deploy
 
+The script reads one optional environment variable, `BASE_TOKEN_URI`, the base link for NFT metadata. It must end with `/`, for example `ipfs://<FOLDER_CID>/`. If it is unset, the contract deploys with an empty base URI and tokens have no real metadata.
+
 ```bash
-forge script script/Deploy.s.sol --rpc-url <SEPOLIA_RPC_URL> --broadcast
+export BASE_TOKEN_URI="ipfs://<FOLDER_CID>/"
+
+forge script script/Deploy.s.sol \
+  --rpc-url <SEPOLIA_RPC_URL> \
+  --account <KEYSTORE_NAME> \
+  --broadcast
 ```
 
-TODO: list the environment variables the script reads (for example a private key) and the constructor argument (`baseTokenURI`). Never commit a `.env` file.
+The script does not read a private key from the environment. The deployer is chosen on the command line, preferably with an encrypted keystore (`cast wallet import <KEYSTORE_NAME> --interactive`) rather than `--private-key`. Never commit a `.env` file or a private key.
 
 ### Frontend
 
@@ -83,14 +92,12 @@ MetaMask may show a phishing warning for new `.vercel.app` domains. This is a co
 
 ## Known limitations
 
-- Existing tokens have a placeholder `tokenURI` (`"0"`), so the app shows a generated avatar instead of a real NFT image.
 - The members-only section holds placeholder content.
 - Membership is checked in the frontend only. Gating content elsewhere (for example a Discord role) needs separate verification.
 - Not audited.
 
 ## Possible next steps
 
-- Real NFT artwork and metadata hosted on IPFS
 - Real gated content behind the membership check
 - Discord or server-side access enforcement
 - Security audit before any mainnet deployment
